@@ -1,10 +1,6 @@
 import tensorflow as tf
-import numpy as np
 import tensorflow.keras as keras
 from tensorflow.keras.datasets import mnist
-import matplotlib.pyplot as plt
-
-# print("Tensorflow version", tf.__version__)
 
 print(tf.test.gpu_device_name())
 
@@ -36,23 +32,3 @@ history = stacked_autoencoder.fit(X_train, X_train, epochs=10,
                                   validation_data=(X_test, X_test))
 
 stacked_autoencoder.save('autoencoder')  # saving autoencoder so we don't have to train it every time
-
-
-def plot_image(image):
-    plt.imshow(image)
-    plt.axis("off")
-
-
-def show_reconstructions(model, n_images=5):
-    reconstructions = model.predict(X_test[:n_images])
-    fig = plt.figure(figsize=(n_images * 1.5, 3))
-    for image_index in range(n_images):
-        plt.subplot(2, n_images, 1 + image_index)
-        plot_image(X_test[image_index])
-        plt.subplot(2, n_images, 1 + n_images + image_index)
-        plot_image(reconstructions[image_index])
-
-
-show_reconstructions(stacked_autoencoder)
-plt.show()
-
