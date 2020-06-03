@@ -1,46 +1,22 @@
 import tensorflow as tf
-import tensorflow_datasets as tfds
+import numpy as np
 import tensorflow.keras as keras
-import sklearn
-from sklearn.datasets import load_digits
+from tensorflow.keras.datasets import mnist
+import matplotlib.pyplot as plt
 
-print("Tensorflow version", tf.__version__)
+# print("Tensorflow version", tf.__version__)
 
 print(tf.test.gpu_device_name())
 
-(mnist_train, mnist_test), mnist_info = tfds.load(
-    'mnist',
-    split=['train', 'test'],
-    shuffle_files=True,
-    as_supervised=True,  # changed from True
-    with_info=True,
-)
-mnist_test = tfds.as_numpy(mnist_test)
-print(type(mnist_test))
+(X_train, _), (X_test, _) = mnist.load_data()
 
-exit(0)
+# normalize
+X_test, X_train = X_test/255.0, X_train/255.0
 
-
-def normalize_img(image, label):
-    return tf.cast(image, tf.float32) / 255., label
-
-
-mnist_train = mnist_train.map(
-    normalize_img, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-mnist_train.cache()
-mnist_train.shuffle(mnist_info.splits['train'].num_examples)
-mnist_train = mnist_train.batch(128)
-mnist_train = mnist_train.prefetch(tf.data.experimental.AUTOTUNE)
-
-
-mnist_test = mnist_test.map(
-    normalize_img, num_parallel_calls= tf.data.experimental.AUTOTUNE)
-mnist_test = mnist_test.batch(128)
-mnist_test = mnist_test.cache()
-mnist_test = mnist_test.prefetch(tf.data.experimental.AUTOTUNE)
 
 stacked_encoder = keras.models.Sequential([
-    keras.layers.Flatten(input_shape=[28, 28]),
+
+    keras.layers.Flatten(input_shape=(28, 28)),
     keras.layers.Dense(100, activation="selu"),
     keras.layers.Dense(30, activation="selu")
 ])
@@ -52,8 +28,29 @@ stacked_decoder = keras.models.Sequential([
 ])
 
 stacked_autoencoder = keras.models.Sequential([stacked_encoder, stacked_decoder])
+stacked_autoencoder.summary()
 stacked_autoencoder.compile(loss="binary_crossentropy",
                             optimizer=keras.optimizers.SGD(lr=1.5))
 
-history = stacked_autoencoder.fit(mnist_train, mnist_train, epochs=10,
-                                  validation_data=[mnist_test, mnist_test])
+history = stacked_autoencoder.fit(X_train, X_train, epochs=10,
+                                  validation_data=(X_test, X_test))
+
+
+def plot_image(image):
+    plt.imshow(image)
+    plt.axis("off")
+
+
+def show_reconstructions(model, n_images=5):
+    reconstructions = model.predict(X_test[:n_images])
+    fig = plt.figure(figsize=(n_images * 1.5, 3))
+    for image_index in range(n_images):
+        plt.subplot(2, n_images, 1 + image_index)
+        plot_image(X_test[image_index])
+        plt.subplot(2, n_images, 1 + n_images + image_index)
+        plot_image(reconstructions[image_index])
+
+
+show_reconstructions(stacked_autoencoder)
+plt.show()
+
