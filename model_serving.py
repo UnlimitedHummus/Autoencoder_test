@@ -12,7 +12,7 @@ autoencoder = keras.models.load_model("autoencoder")  # loading the model from m
 
 
 def plot_image(image):
-    plt.imshow(image)
+    plt.imshow(image, cmap='gray')
     plt.axis("off")
 
 
@@ -26,5 +26,5 @@ def show_reconstructions(model, n_images=5):
         plot_image(reconstructions[image_index])
 
 
-show_reconstructions(autoencoder)
+show_reconstructions(autoencoder, 8)
 plt.show()
