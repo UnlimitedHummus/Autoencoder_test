@@ -26,9 +26,9 @@ stacked_decoder = keras.models.Sequential([
 stacked_autoencoder = keras.models.Sequential([stacked_encoder, stacked_decoder])
 stacked_autoencoder.summary()
 stacked_autoencoder.compile(loss="binary_crossentropy",
-                            optimizer=keras.optimizers.SGD(lr=1.5))
+                            optimizer=keras.optimizers.SGD(lr=1.5, momentum=0.9))
 
-history = stacked_autoencoder.fit(X_train, X_train, epochs=10,
+history = stacked_autoencoder.fit(X_train, X_train, epochs=30,
                                   validation_data=(X_test, X_test))
 
 stacked_autoencoder.save('autoencoder')  # saving autoencoder so we don't have to train it every time
