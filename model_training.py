@@ -3,6 +3,7 @@ import tensorflow.keras as keras
 from tensorflow.keras.datasets import mnist
 
 # print(tf.test.gpu_device_name())
+n_reduced = 30
 
 (X_train, _), (X_test, _) = mnist.load_data()  # loading the mnist dataset
 
@@ -13,11 +14,11 @@ stacked_encoder = keras.models.Sequential([  # building the encoder
 
     keras.layers.Flatten(input_shape=(28, 28)),
     keras.layers.Dense(100, activation="selu"),
-    keras.layers.Dense(30, activation="selu")
+    keras.layers.Dense(n_reduced, activation="selu")
 ])
 
 stacked_decoder = keras.models.Sequential([  # building the decoder
-    keras.layers.Dense(100, activation="selu", input_shape=[30]),
+    keras.layers.Dense(100, activation="selu", input_shape=[n_reduced]),
     keras.layers.Dense(28 * 28, activation="sigmoid"),
     keras.layers.Reshape([28, 28])
 ])
