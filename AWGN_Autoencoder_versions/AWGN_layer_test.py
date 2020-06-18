@@ -35,10 +35,10 @@ class AWGNLayer(tf.keras.layers.Layer):
     def build(self, input_shape):
         pass
 
-    def call(self, input):
+    def call(self, inputs, **kwargs):
         # print(type(input.numpy()))
-        input = tf.dtypes.cast(input, tf.uint8)
-        return transmitter.transmit_bitstream(input.numpy())
+        inputs = tf.dtypes.cast(inputs, tf.uint8)
+        return transmitter.transmit_bitstream(inputs.numpy())
 
 
 layer = AWGNLayer(15)
