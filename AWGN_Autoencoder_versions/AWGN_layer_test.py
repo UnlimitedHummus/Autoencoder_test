@@ -1,7 +1,8 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras.datasets import mnist
-from Transmitters.qpsk import QPSKTransmitter
+#from Transmitters.qpsk import QPSKTransmitter
+from komm import AWGNChannel
 
 # print(tf.test.gpu_device_name())
 n_reduced = 30
@@ -24,7 +25,8 @@ stacked_decoder = keras.models.Sequential([  # building the decoder
     keras.layers.Reshape([28, 28])
 ])
 # ----------------------------------------------------------------------------------------------------------
-transmitter = QPSKTransmitter(1)
+#transmitter = QPSKTransmitter(1)
+channel = AWGNChannel(snr=1.0)
 
 
 class AWGNLayer(tf.keras.layers.Layer):
@@ -37,8 +39,21 @@ class AWGNLayer(tf.keras.layers.Layer):
 
     def call(self, inputs, **kwargs):
         # print(type(input.numpy()))
-        inputs = tf.dtypes.cast(inputs, tf.uint8)
-        return transmitter.transmit_bitstream(inputs.numpy())
+        # inputs = tf.dtypes.cast(inputs, tf.uint8)
+        # return transmitter.transmit_bitstream(inputs.numpy())
+
+        # Make first half real part, second half imaginary part
+        data = tf.dtypes.complex(inputs[:n_reduced//2], inputs[n_reduced//2+1:])
+        # Transmit over AWGN channel
+        data = channel(data)
+        # extract real part
+        real_part = tf.dtypes.cast(data, tf.float32)
+        # extract imaginary part by flipping real and imaginary parts
+        temp_data = tf.math.multiply(data, 0-1j)
+        imag_part = tf.dtypes.cast(temp_data, tf.float32)
+        # Concatenate back to original shape
+        data = tf.concat([real_part, imag_part], 1)
+        return data
 
 
 layer = AWGNLayer(15)
