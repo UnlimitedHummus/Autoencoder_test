@@ -2,6 +2,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras.datasets import mnist
 from Transmitters.qpsk import QPSKTransmitter
+import matplotlib.pyplot as plt
 import numpy as np
 # turn off eager execution
 # tf.compat.v1.disable_eager_execution()
@@ -49,7 +50,7 @@ class Noise(tf.keras.layers.Layer):
         pass
 
     def call(self, input):
-        return input
+        return keras.layers.GaussianNoise(0.5)(input, training=True)
 
 
 class Receiver(tf.keras.layers.Layer):
@@ -78,6 +79,41 @@ output = receiver(tf.zeros([40]))  # Calling the layer `.builds` it.
 print(output)
 
 # building a sequential model
-channel = keras.models.Sequential([Emitter(30), Noise(30), Receiver(30)])
+channel = keras.models.Sequential([
+    Emitter(30),
+    Noise(30),
+    Receiver(30)])
+
 channel.build(input_shape=[30])
 channel.summary()
+
+output = channel.predict(tf.zeros([30]))
+
+print(output)
+
+simulator = keras.Sequential([stacked_encoder, channel, stacked_decoder])
+simulator.summary()
+simulator.compile(loss="binary_crossentropy", optimizer=keras.optimizers.SGD(lr=1.5))
+
+history = simulator.fit(X_train, X_train, epochs=10, validation_data=(X_test, X_test))
+
+simulator.save('autoencoder')  # saving autoencoder so we don't have to train it every time
+
+
+def plot_image(image):
+    plt.imshow(image)
+    plt.axis("off")
+
+
+def show_reconstructions(model, n_images=8):
+    reconstructions = model.predict(X_test[:n_images])
+    fig = plt.figure(figsize=(n_images * 1.5, 3))
+    for image_index in range(n_images):
+        plt.subplot(2, n_images, 1 + image_index)
+        plot_image(X_test[image_index])
+        plt.subplot(2, n_images, 1 + n_images + image_index)
+        plot_image(reconstructions[image_index])
+
+
+show_reconstructions(simulator)
+plt.show()
