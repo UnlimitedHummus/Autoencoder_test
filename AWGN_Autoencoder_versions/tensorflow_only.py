@@ -8,7 +8,7 @@ import numpy as np
 # tf.compat.v1.disable_eager_execution()
 
 # print(tf.test.gpu_device_name())
-n_reduced = 30
+n_reduced = 255
 
 (X_train, _), (X_test, _) = mnist.load_data()  # loading the mnist dataset
 
@@ -19,7 +19,7 @@ stacked_encoder = keras.models.Sequential([  # building the encoder
 
     keras.layers.Flatten(input_shape=(28, 28)),
     keras.layers.Dense(100, activation="selu"),
-    keras.layers.Dense(n_reduced, activation="selu")
+    keras.layers.Dense(n_reduced, activation="sigmoid")
 ])
 
 stacked_decoder = keras.models.Sequential([  # building the decoder
@@ -30,7 +30,7 @@ stacked_decoder = keras.models.Sequential([  # building the decoder
 
 
 class Emitter(tf.keras.layers.Layer):
-    def __init__(self, num_outputs, units=32, input_dim=32):
+    def __init__(self, num_outputs, units=32, input_dim=32):  # TODO: add parameter that switches between continuous and discrete
         super(Emitter, self).__init__()
         self.num_outputs = num_outputs
 
@@ -38,7 +38,10 @@ class Emitter(tf.keras.layers.Layer):
         pass
 
     def call(self, input):
-        return input
+        # return input
+        # return tf.math.ceil(input)
+        clipped_input = tf.clip_by_value(input, clip_value_min=-100, clip_value_max=100)
+        return tf.math.round(clipped_input)  # TODO: map each input float to 2 integers, that bet converted to complex numbers
 
 
 class Noise(tf.keras.layers.Layer):
@@ -80,17 +83,23 @@ print(output)
 
 # building a sequential model
 channel = keras.models.Sequential([
-    Emitter(30),
-    Noise(30),
-    Receiver(30)])
+    Emitter(n_reduced),
+    Noise(n_reduced),
+    Receiver(n_reduced)])
 
-channel.build(input_shape=[30])
+channel.build(input_shape=[n_reduced])
 channel.summary()
 
 output = channel.predict(tf.zeros([30]))
 
 print(output)
-
+# ------------------------------------------Pretraining--------------------------------------------------
+pretraining_model = keras.models.Sequential([stacked_encoder, keras.layers.GaussianNoise(0.5), stacked_decoder])
+pretraining_model.summary()
+pretraining_model.compile(loss="binary_crossentropy", optimizer=keras.optimizers.SGD(lr=1.5))
+print("Starting pretraining:")
+pretraining_model.fit(X_train, X_train, epochs=20, validation_data=(X_test, X_test))
+# ------------------------------------------simulation---------------------------------------------------
 simulator = keras.Sequential([stacked_encoder, channel, stacked_decoder])
 simulator.summary()
 simulator.compile(loss="binary_crossentropy", optimizer=keras.optimizers.SGD(lr=1.5))
