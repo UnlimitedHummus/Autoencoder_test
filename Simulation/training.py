@@ -1,0 +1,94 @@
+import tensorflow as tf
+import tensorflow.keras as keras
+from tensorflow.keras.datasets import mnist
+import datetime
+
+# ----------------------------------------Tensorboard------------------------------------------------
+log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+# ---------------------------------------------------------------------------------------------------
+
+n_reduced = 1024  # how many bits will be transmitted choose a multiple of 2
+# bei 512 komprimierung um Faktor 12.25
+
+(X_train, _), (X_test, _) = mnist.load_data()  # loading the mnist dataset
+
+X_test, X_train = X_test/255.0, X_train/255.0  # normalizing the data
+
+# ------------------------------------------Autoencoder-----------------------------------------------
+
+stacked_encoder = keras.models.Sequential([  # building the encoder
+
+    keras.layers.Flatten(input_shape=(28, 28)),
+    keras.layers.Dense(200, activation="selu"),
+    keras.layers.Dense(100, activation="selu"),
+    keras.layers.Dense(n_reduced, activation="sigmoid"),
+    keras.layers.Dropout(0.3)
+])
+
+stacked_decoder = keras.models.Sequential([  # building the decoder
+    keras.layers.Dense(100, activation="selu", input_shape=[n_reduced]),
+    keras.layers.Dense(200, activation="selu"),
+    keras.layers.Dense(28 * 28, activation="sigmoid"),
+    keras.layers.Reshape([28, 28])
+])
+# ------------------------------------------ChannelLayer-------------------------------------------------
+
+
+class ChannelLayer(tf.keras.layers.Layer):
+    def __init__(self, num_outputs):  #TODO: add SNR and disables/ enables rounding
+        super(ChannelLayer, self).__init__()
+        self.num_outputs = num_outputs
+
+    def build(self, input_shape):
+        pass
+
+    def call(self, input):
+        batch_size = tf.shape(input)[0]
+        # rounding makes the input take discrete values 0 or 1
+        rounded_0 = tf.round(input)  # TODO: add parameter that enables and disables rounding
+
+        # Make first half real part, second half imaginary part
+        real_0, imag_0 = tf.split(rounded_0, num_or_size_splits=2, axis=1)
+        complex_0 = tf.complex(real_0, imag_0)
+        # simulate sending data over noisy channel
+        real_noise = keras.layers.GaussianNoise(0.5)(tf.fill(tf.shape(real_0), 0.0), training=True)
+        imag_noise = keras.layers.GaussianNoise(0.5)(tf.fill(tf.shape(imag_0), 0.0), training=True)
+        complex_noise = tf.complex(real_noise, imag_noise)
+        complex_1 = complex_0 + complex_noise  # adding complex noise
+
+        # turing the complex data back into real data
+        real_1 = tf.math.real(complex_1)
+        imag_1 = tf.math.imag(complex_1)
+
+        # concatenate back to the original shape
+        concat_data = tf.concat([real_1, imag_1], axis=1)
+
+        # round to get back to discrete values
+        rounded_1 = tf.round(concat_data)
+        output = rounded_1
+        if False:
+            print("shape before sending:", rounded_0)
+            print("Real_0 part: ", real_0)
+            print("Real_1 part:", real_1)
+            print("Shape after transmitting", concat_data)
+        return output
+
+
+# ------------------------------------------Pretraining--------------------------------------------------
+# Gaussian noise to make the model choose more extreme values close to 0 and 1
+def pretraining():
+    pretraining_model = keras.models.Sequential([stacked_encoder, keras.layers.GaussianNoise(0.7), stacked_decoder])
+    pretraining_model.summary()
+    pretraining_model.compile(loss="binary_crossentropy", optimizer=keras.optimizers.SGD(lr=1.5))
+    print("Starting pretraining:")
+    pretraining_model.fit(X_train, X_train, epochs=2, validation_data=(X_test, X_test), callbacks=[tensorboard_callback])
+
+
+pretraining()
+# ------------------------------------------simulation---------------------------------------------------
+simulator = keras.Sequential([stacked_encoder, ChannelLayer(n_reduced), stacked_decoder])
+simulator.summary()
+simulator.compile(loss="binary_crossentropy", optimizer=keras.optimizers.SGD(lr=1.5))
+history = simulator.fit(X_train, X_train, epochs=2, validation_data=(X_test, X_test))
+simulator.save('autoencoder')  # saving autoencoder so we don't have to train it every time

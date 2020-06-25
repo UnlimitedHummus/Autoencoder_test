@@ -48,8 +48,8 @@ class Emitter(tf.keras.layers.Layer):
         # return input
         # return tf.math.ceil(input)
         # clipped_input = tf.clip_by_value(input, clip_value_min=-100, clip_value_max=100)
-        # return tf.math.round(input)  # TODO: map each input float to 2 integers, that bet converted to complex numbers
-        reshaped_input = tf.reshape(input, [2, -1])
+        rounded = tf.math.round(input)  # TODO: map each input float to 2 integers, that bet converted to complex numbers
+        reshaped_input = tf.reshape(rounded, [2, -1])
         # print(tf.shape(reshaped_input))
         real = reshaped_input[0]
         imag = reshaped_input[1]
@@ -95,8 +95,7 @@ receiver = Receiver(30)
 # testing the call method
 print("Testing Emitter:")
 print("Output should be: [1.+4.j 2.+5.j 3.+6.j]")
-t1 = [[1., 2., 3.],
-      [4., 5., 6.]]
+t1 = [[1., 2., 3., 4., 5., 6.]]
 emitter_output = emitter(t1)
 print(emitter_output)  # should return [1.+4.j 2.+5.j 3.+6.j]
 
@@ -117,7 +116,7 @@ print(receiver_output)
 channel = keras.models.Sequential([
     keras.layers.InputLayer(n_reduced),
     Emitter(n_reduced),
-    Noise(n_reduced),
+ #   Noise(n_reduced),
     Receiver(n_reduced)])
 
 # channel.build(input_shape=[n_reduced])
@@ -132,7 +131,7 @@ pretraining_model = keras.models.Sequential([stacked_encoder, keras.layers.Gauss
 pretraining_model.summary()
 pretraining_model.compile(loss="binary_crossentropy", optimizer=keras.optimizers.SGD(lr=1.5))
 print("Starting pretraining:")
-pretraining_model.fit(X_train, X_train, epochs=30, validation_data=(X_test, X_test), callbacks=[tensorboard_callback])
+pretraining_model.fit(X_train, X_train, epochs=10, validation_data=(X_test, X_test), callbacks=[tensorboard_callback])
 # ------------------------------------------simulation---------------------------------------------------
 simulator = keras.Sequential([stacked_encoder, channel, stacked_decoder])
 simulator.summary()
