@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras.datasets import mnist
+import matplotlib.pyplot as plt
 import datetime
 
 # ----------------------------------------Tensorboard------------------------------------------------
@@ -52,8 +53,8 @@ class ChannelLayer(tf.keras.layers.Layer):
         real_0, imag_0 = tf.split(rounded_0, num_or_size_splits=2, axis=1)
         complex_0 = tf.complex(real_0, imag_0)
         # simulate sending data over noisy channel
-        real_noise = keras.layers.GaussianNoise(0.5)(tf.fill(tf.shape(real_0), 0.0), training=True)
-        imag_noise = keras.layers.GaussianNoise(0.5)(tf.fill(tf.shape(imag_0), 0.0), training=True)
+        real_noise = keras.layers.GaussianNoise(0.7)(tf.fill(tf.shape(real_0), 0.0), training=True)
+        imag_noise = keras.layers.GaussianNoise(0.7)(tf.fill(tf.shape(imag_0), 0.0), training=True)
         complex_noise = tf.complex(real_noise, imag_noise)
         complex_1 = complex_0 + complex_noise  # adding complex noise
 
@@ -77,18 +78,39 @@ class ChannelLayer(tf.keras.layers.Layer):
 
 # ------------------------------------------Pretraining--------------------------------------------------
 # Gaussian noise to make the model choose more extreme values close to 0 and 1
-def pretraining():
+def pretraining(epochs=2):
     pretraining_model = keras.models.Sequential([stacked_encoder, keras.layers.GaussianNoise(0.7), stacked_decoder])
     pretraining_model.summary()
     pretraining_model.compile(loss="binary_crossentropy", optimizer=keras.optimizers.SGD(lr=1.5))
     print("Starting pretraining:")
-    pretraining_model.fit(X_train, X_train, epochs=2, validation_data=(X_test, X_test), callbacks=[tensorboard_callback])
+    pretraining_model.fit(X_train, X_train, epochs=epochs, validation_data=(X_test, X_test), callbacks=[tensorboard_callback])
 
 
-pretraining()
+pretraining(30)
 # ------------------------------------------simulation---------------------------------------------------
 simulator = keras.Sequential([stacked_encoder, ChannelLayer(n_reduced), stacked_decoder])
 simulator.summary()
 simulator.compile(loss="binary_crossentropy", optimizer=keras.optimizers.SGD(lr=1.5))
 history = simulator.fit(X_train, X_train, epochs=2, validation_data=(X_test, X_test))
 simulator.save('autoencoder')  # saving autoencoder so we don't have to train it every time
+
+# -----------------------------------------show images---------------------------------------------------
+
+
+def plot_image(image):
+    plt.imshow(image, cmap='gray')
+    plt.axis("off")
+
+
+def show_reconstructions(model, n_images=5):  # showing images before and after autoencoding
+    reconstructions = model.predict(X_test[:n_images])  # sending images through autoencoder
+    fig = plt.figure(figsize=(n_images * 1.5, 3))
+    for image_index in range(n_images):  # plotting images vs autoencoded images
+        plt.subplot(2, n_images, 1 + image_index)
+        plot_image(X_test[image_index])
+        plt.subplot(2, n_images, 1 + n_images + image_index)
+        plot_image(reconstructions[image_index])
+
+
+show_reconstructions(simulator, 8)
+plt.show()
