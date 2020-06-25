@@ -25,5 +25,5 @@ def show_reconstructions(model, n_images=5):  # showing images before and after 
         plot_image(reconstructions[image_index])
 
 
-show_reconstructions(autoencoder, 8)
+show_reconstructions(autoencoder, 15)
 plt.show()
