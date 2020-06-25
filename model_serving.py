@@ -16,7 +16,7 @@ def plot_image(image):
 
 
 def show_reconstructions(model, n_images=5):  # showing images before and after autoencoding
-    reconstructions = model.predict(X_test[:n_images])  # sending images through autoencoder
+    reconstructions = model.predict(X_test[:n_images])  # sending images through autoencoder_snr=inf
     fig = plt.figure(figsize=(n_images * 1.5, 3))
     for image_index in range(n_images):  # plotting images vs autoencoded images
         plt.subplot(2, n_images, 1 + image_index)

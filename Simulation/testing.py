@@ -7,7 +7,7 @@ from tensorflow.keras.datasets import mnist
 
 X_test, X_train = X_test/255.0, X_train/255.0  # normalizing data
 
-autoencoder = keras.models.load_model("autoencoder")  # loading the model from memory
+autoencoder = keras.models.load_model("autoencoder_snr=inf")  # loading the model from memory
 
 
 def plot_image(image):
@@ -16,7 +16,7 @@ def plot_image(image):
 
 
 def show_reconstructions(model, n_images=5):  # showing images before and after autoencoding
-    reconstructions = model.predict(X_test[:n_images])  # sending images through autoencoder
+    reconstructions = model.predict(X_test[:n_images])  # sending images through autoencoder_snr=inf
     fig = plt.figure(figsize=(n_images * 1.5, 3))
     for image_index in range(n_images):  # plotting images vs autoencoded images
         plt.subplot(2, n_images, 1 + image_index)

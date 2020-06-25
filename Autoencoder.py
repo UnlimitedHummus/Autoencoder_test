@@ -35,7 +35,7 @@ stacked_autoencoder.compile(loss="binary_crossentropy",
 history = stacked_autoencoder.fit(X_train, X_train, epochs=10,
                                   validation_data=(X_test, X_test))
 
-stacked_autoencoder.save('autoencoder')  # saving autoencoder so we don't have to train it every time
+stacked_autoencoder.save('autoencoder_snr=inf')  # saving autoencoder_snr=inf so we don't have to train it every time
 
 
 def plot_image(image):
